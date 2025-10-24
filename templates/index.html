@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat-IQ | Advanced Threat Scanner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Queensides&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS Variables for Theme */
+        :root {
+            --primary: #0a84ff;
+            --primary-dark: #0066cc;
+            --secondary: #00d4aa;
+            --danger: #ff453a;
+            --warning: #ff9f0a;
+            --success: #30d158;
+            
+            --bg-primary: #1c1c1e;
+            --bg-secondary: #2c2c2e;
+            --bg-tertiary: #3a3a3c;
+            --text-primary: #ffffff;
+            --text-secondary: #ebebf5;
+            --text-tertiary: #98989d;
+            
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f2f2f7;
+            --bg-tertiary: #e5e5ea;
+            --text-primary: #000000;
+            --text-secondary: #1c1c1e;
+            --text-tertiary: #48484a;
+        }
+
+        /* Scanning Overlay */
+        .scanning-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .scanning-overlay.active {
+            display: flex;
+        }
+
+        .scanning-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--bg-tertiary);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .scanning-text {
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* File Upload Styling */
+        .file-upload-preview {
+            display: none;
+            align-items: center;
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            border: 2px solid var(--success);
+            animation: slideIn 0.3s ease;
+        }
+
+        .file-upload-preview.visible {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .file-icon.pdf { background: linear-gradient(135deg, #ff5e5e, #ff2e2e); color: white; }
+        .file-icon.docx { background: linear-gradient(135deg, #4a86e8, #2b5fdc); color: white; }
+        .file-icon.xlsx { background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; }
+        .file-icon.pptx { background: linear-gradient(135deg, #ff9800, #f57c00); color: white; }
+        .file-icon.default { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+
+        .file-details {
+            flex-grow: 1;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            color: var(--text-tertiary);
+            font-size: 14px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .file-remove {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .file-remove:hover {
+            background: var(--bg-secondary);
+            color: var(--danger);
+        }
+
+        /* Loading Bar */
+        .upload-progress {
+            display: none;
+            margin: 15px 0;
+        }
+
+        .upload-progress.visible {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* File Info Styling */
+        .file-info {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin: 15px 0;
+        }
+
+        .file-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--bg-secondary);
+        }
+
+        .file-info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .threat-breakdown {
+            margin: 20px 0;
+        }
+
+        .threat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+        }
+
+        .threat-severity {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .severity-high {
+            background: var(--danger);
+            color: white;
+        }
+
+        .severity-medium {
+            background: var(--warning);
+            color: black;
+        }
+
+        .severity-low {
+            background: var(--success);
+            color: white;
+        }
+
+        .analysis-details {
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary);
+        }
+
+        .url-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .url-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .url-safe {
+            border-left: 4px solid var(--success);
+        }
+
+        .url-suspicious {
+            border-left: 4px solid var(--warning);
+        }
+
+        .url-malicious {
+            border-left: 4px solid var(--danger);
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: var(--transition);
+            overflow-x: hidden;
+            font-family: 'Exo 2', sans-serif;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-secondary);
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            z-index: 10;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--bg-tertiary);
+            margin-bottom: 20px;
+            height: auto;
+            min-height: 80px;
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .logo {
+            padding: 0 10px 20px;
+        }
+
+        .logo-main {
+            font-family: 'Orbitron', monospace;
+            font-size: 29px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            line-height: 1.2;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            transition: var(--transition);
+        }
+
+        .logo-collapsed {
+            font-family: 'Orbitron', monospace;
+            font-size: 22px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            display: none;
+        }
+
+        .sidebar.collapsed .logo-main {
+            display: none;
+        }
+
+        .sidebar.collapsed .logo-collapsed {
+            display: block;
+        }
+
+        .logo-caption {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: var(--transition);
+        }
+
+        .sidebar.collapsed .logo-caption {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+        }
+
+        .nav-items {
+            list-style: none;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            padding: 14px 20px;
+            margin: 5px 10px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 14px;
+            justify-content: center;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .nav-icon {
+            margin-right: 0;
+        }
+
+        .nav-text {
+            transition: var(--transition);
+            opacity: 1;
+        }
+
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            width: 0;
+        }
+
+        .login-btn {
+            margin: 10px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .login-btn {
+            padding: 12px;
+        }
+
+        .login-btn span {
+            transition: var(--transition);
+            opacity: 1;
+        }
+
+        .sidebar.collapsed .login-btn span {
+            opacity: 0;
+            width: 0;
+        }
+
+        .login-icon {
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .login-icon {
+            margin-right: 0;
+        }
+
+        /* Sidebar Toggle */
+        .sidebar-toggle {
+            position: absolute;
+            top: 25px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 15;
+            border: 2px solid var(--bg-secondary);
+            color: white;
+        }
+
+        .sidebar-toggle:hover {
+            transform: scale(1.1);
+            background: var(--primary-dark);
+        }
+
+        .sidebar-toggle i {
+            font-size: 12px;
+            transition: var(--transition);
+        }
+
+        .sidebar.collapsed .sidebar-toggle i {
+            transform: rotate(180deg);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 30px;
+            background-color: var(--bg-secondary);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+            z-index: 5;
+        }
+
+        .top-bar-left {
+            flex: 1;
+        }
+
+        .top-bar-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .top-bar-right {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .about-developer {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+
+        .about-developer::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 50%;
+            background-color: var(--primary);
+            transition: var(--transition);
+            transform: translateX(-50%);
+        }
+
+        .about-developer:hover {
+            color: var(--primary);
+        }
+
+        .about-developer:hover::after {
+            width: 100%;
+        }
+
+        .vertical-divider {
+            width: 2px;
+            height: 20px;
+            background-color: var(--text-tertiary);
+            margin: 0 20px;
+            opacity: 0.6;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            background: var(--bg-tertiary);
+            border-radius: 30px;
+            padding: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 70px;
+            position: relative;
+        }
+
+        .toggle-track {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 8px;
+        }
+
+        .theme-toggle-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+            transition: var(--transition);
+            position: absolute;
+            left: 4px;
+        }
+
+        .light-theme .theme-toggle-btn {
+            left: 38px;
+        }
+
+        .toggle-icon {
+            font-size: 14px;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Section Headers */
+        .section-header {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .section-subtitle {
+            color: var(--text-tertiary);
+            font-size: 16px;
+            line-height: 1.5;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* Upload Areas */
+        .upload-area {
+            border: 2px dashed var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            margin: 20px 0;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(10, 132, 255, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .upload-subtext {
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--text-tertiary);
+        }
+
+        .btn-icon {
+            margin-right: 8px;
+        }
+
+        /* Threat Score */
+        .threat-score-container {
+            margin: 25px 0;
+            display: none;
+        }
+
+        .threat-score-container.visible {
+            display: block;
+        }
+
+        .threat-score {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: conic-gradient(var(--success) 0% 25%, var(--warning) 25% 75%, var(--danger) 75% 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 0 10px var(--bg-secondary), 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .score-inner {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .score-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .risk-level {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .risk-very-high { color: var(--danger); }
+        .risk-high { color: #ff6b6b; }
+        .risk-medium { color: var(--warning); }
+        .risk-low { color: var(--success); }
+        .risk-very-low { color: #4cd964; }
+
+        /* Results */
+        .results-container {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .results-container.visible {
+            display: block;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            background-color: var(--bg-tertiary);
+            margin-bottom: 10px;
+        }
+
+        .result-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .status-safe {
+            background-color: var(--success);
+        }
+
+        .status-suspicious {
+            background-color: var(--warning);
+        }
+
+        .status-malicious {
+            background-color: var(--danger);
+        }
+
+        .report-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 20px 30px;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            border-top: 1px solid var(--bg-tertiary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+            
+            .sidebar.collapsed {
+                width: 70px;
+            }
+            
+            .logo {
+                padding: 10px 5px;
+            }
+            
+            .logo-main {
+                font-size: 14px;
+            }
+            
+            .logo-caption {
+                font-size: 8px;
+                letter-spacing: 1px;
+            }
+            
+            .nav-text {
+                display: none;
+            }
+            
+            .nav-item {
+                justify-content: center;
+                padding: 15px;
+            }
+            
+            .nav-icon {
+                margin-right: 0;
+            }
+            
+            .login-btn span {
+                display: none;
+            }
+            
+            .about-developer {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            
+            .top-bar {
+                padding: 15px 20px;
+            }
+            
+            .sidebar-toggle {
+                right: -10px;
+                width: 20px;
+                height: 20px;
+            }
+
+            .file-upload-preview {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .file-icon {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            .file-meta {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Scanning Overlay -->
+    <div class="scanning-overlay" id="scanningOverlay">
+        <div class="scanning-spinner"></div>
+        <div class="scanning-text" id="scanningText">Analyzing Document...</div>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt" style="display: none;">
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-toggle">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+            <div class="logo">
+                <div class="logo-main">THREAT - IQ</div>
+                <div class="logo-collapsed">TIQ</div>
+                <div class="logo-caption">ANALYZE . PROTECT</div>
+            </div>
+            
+            <ul class="nav-items">
+                <li class="nav-item active" data-target="document-analysis">
+                    <div class="nav-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <span class="nav-text">Document Analysis</span>
+                </li>
+                <li class="nav-item" data-target="url-analysis">
+                    <div class="nav-icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <span class="nav-text">URL Safety Analyzer</span>
+                </li>
+                <li class="nav-item" data-target="archive-analysis">
+                    <div class="nav-icon">
+                        <i class="fas fa-file-archive"></i>
+                    </div>
+                    <span class="nav-text">Archive File Analyzer</span>
+                </li>
+            </ul>
+            
+            <button class="login-btn">
+                <i class="fas fa-sign-in-alt login-icon"></i>
+                <span>Login</span>
+            </button>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <!-- Empty space for balance -->
+                </div>
+                <div class="top-bar-center">
+                    <a href="https://piyush-jha-16.github.io/" class="about-developer" target="_blank">About Developer</a>
+                    <div class="vertical-divider"></div>
+                    <a href="#" class="about-developer" target="_blank">GitHub Repository</a>
+                </div>
+                <div class="top-bar-right">
+                    <div class="theme-toggle">
+                        <div class="toggle-track">
+                            <i class="fas fa-moon toggle-icon"></i>
+                            <i class="fas fa-sun toggle-icon"></i>
+                        </div>
+                        <div class="theme-toggle-btn">
+                            <i class="fas fa-moon toggle-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Document Analysis Section -->
+                <div class="content-section active" id="document-analysis">
+                    <div class="section-header">
+                        <h1 class="section-title">Document Analysis</h1>
+                        <p class="section-subtitle">Upload documents for deep security analysis. We'll extract and examine all embedded content, links, and metadata for potential threats.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <h2 class="card-title">Upload Documents</h2>
+                        </div>
+                        
+                        <p>Select a document file to analyze for security threats, malicious content, and hidden elements.</p>
+                        
+                        <div class="upload-area" id="document-upload">
+                            <div class="upload-icon">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <div class="upload-text">Drag & Drop documents here</div>
+                            <div class="upload-subtext">Supports PDF, DOCX, XLSX, PPTX (Max 50MB)</div>
+                        </div>
+
+                        <!-- File Upload Preview -->
+                        <div class="file-upload-preview" id="filePreview">
+                            <div class="file-icon" id="fileIcon">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div class="file-details">
+                                <div class="file-name" id="fileNamePreview">file_name.pdf</div>
+                                <div class="file-meta">
+                                    <span id="fileSizePreview">0 KB</span>
+                                    <span id="fileTypePreview">PDF</span>
+                                    <span style="color: var(--success);">Ready for analysis</span>
+                                </div>
+                            </div>
+                            <button class="file-remove" id="fileRemove" title="Remove file">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <!-- Upload Progress -->
+                        <div class="upload-progress" id="uploadProgress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <div class="progress-text" id="progressText">Uploading...</div>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" id="analyze-document">
+                                <i class="fas fa-search btn-icon"></i> Analyze Document
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Threat Score Section -->
+                    <div class="threat-score-container" id="document-threat-score">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h2 class="card-title">Threat Analysis Report</h2>
+                            </div>
+                            
+                            <!-- File Information -->
+                            <div class="file-info">
+                                <h3>File Information</h3>
+                                <div class="file-info-item">
+                                    <span>File Name:</span>
+                                    <span id="fileName">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>File Type:</span>
+                                    <span id="fileType">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>File Size:</span>
+                                    <span id="fileSize">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>SHA-256 Hash:</span>
+                                    <span id="fileHash">-</span>
+                                </div>
+                            </div>
+                            
+                            <div class="threat-score">
+                                <div class="score-circle">
+                                    <div class="score-inner">
+                                        <div class="score-value" id="threatScoreValue">0/100</div>
+                                        <div class="score-label">THREAT SCORE</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="risk-level risk-low" id="riskLevel">LOW RISK</div>
+                            
+                            <!-- Threat Breakdown -->
+                            <div class="threat-breakdown" id="threatBreakdown">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            
+                            <!-- Analysis Details -->
+                            <div class="analysis-details" id="analysisDetails">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            
+                            <div class="report-actions">
+                                <button class="btn btn-primary" id="downloadReport">
+                                    <i class="fas fa-file-download btn-icon"></i> Download Full Report
+                                </button>
+                                <button class="btn btn-secondary" id="scanAnother">
+                                    <i class="fas fa-redo btn-icon"></i> Scan Another File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- URL Analysis Section -->
+                <div class="content-section" id="url-analysis">
+                    <div class="section-header">
+                        <h1 class="section-title">URL Safety Analyzer</h1>
+                        <p class="section-subtitle">Check any URL for phishing attempts, malware, and other security threats using multiple threat intelligence sources.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <h2 class="card-title">Enter URL to Analyze</h2>
+                        </div>
+                        
+                        <p>Enter a complete URL (including http:// or https://) to check for security threats.</p>
+                        
+                        <div style="margin: 20px 0;">
+                            <input type="text" id="urlInput" placeholder="https://example.com" style="width: 100%; padding: 15px; border-radius: var(--border-radius); border: 1px solid var(--bg-tertiary); background-color: var(--bg-primary); color: var(--text-primary); font-size: 16px;">
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" id="analyze-url">
+                                <i class="fas fa-shield-alt btn-icon"></i> Analyze URL
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Threat Score Section -->
+                    <div class="threat-score-container" id="url-threat-score">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h2 class="card-title">URL Threat Analysis Report</h2>
+                            </div>
+                            
+                            <div class="threat-score">
+                                <div class="score-circle">
+                                    <div class="score-inner">
+                                        <div class="score-value">0/100</div>
+                                        <div class="score-label">THREAT SCORE</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="risk-level risk-medium">MEDIUM RISK</div>
+                            
+                            <div class="results-container" id="url-results">
+                                <div class="result-item">
+                                    <div class="result-status status-safe"></div>
+                                    <div>Domain registered for 2+ years</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-status status-suspicious"></div>
+                                    <div>SSL certificate issues detected</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-status status-safe"></div>
+                                    <div>No known malware hosted</div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-actions">
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-file-download btn-icon"></i> Download Full Report
+                                </button>
+                                <button class="btn btn-secondary">
+                                    <i class="fas fa-redo btn-icon"></i> Scan Another URL
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Archive Analysis Section -->
+                <div class="content-section" id="archive-analysis">
+                    <div class="section-header">
+                        <h1 class="section-title">Archive File Analyzer</h1>
+                        <p class="section-subtitle">Upload archive files to scan their contents for potential threats without extracting them. We analyze file structure and contents for security risks.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-file-archive"></i>
+                            </div>
+                            <h2 class="card-title">Upload Archive Files</h2>
+                        </div>
+                        
+                        <p>Select an archive file to analyze its contents for potential security threats and malicious files.</p>
+                        
+                        <div class="upload-area" id="archive-upload">
+                            <div class="upload-icon">
+                                <i class="fas fa-file-archive"></i>
+                            </div>
+                            <div class="upload-text">Drag & Drop archive files here</div>
+                            <div class="upload-subtext">Supports ZIP, RAR, TAR, 7Z (Max 100MB)</div>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" id="analyze-archive">
+                                <i class="fas fa-search btn-icon"></i> Analyze Archive
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Threat Score Section -->
+                    <div class="threat-score-container" id="archive-threat-score">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h2 class="card-title">Archive Threat Analysis Report</h2>
+                            </div>
+                            
+                            <div class="threat-score">
+                                <div class="score-circle">
+                                    <div class="score-inner">
+                                        <div class="score-value">0/100</div>
+                                        <div class="score-label">THREAT SCORE</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="risk-level risk-high">HIGH RISK</div>
+                            
+                            <div class="results-container" id="archive-results">
+                                <div class="result-item">
+                                    <div class="result-status status-malicious"></div>
+                                    <div>Potentially malicious executable detected</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-status status-safe"></div>
+                                    <div>No password-protected files</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-status status-suspicious"></div>
+                                    <div>Unusual file compression ratio</div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-actions">
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-file-download btn-icon"></i> Download Full Report
+                                </button>
+                                <button class="btn btn-secondary">
+                                    <i class="fas fa-redo btn-icon"></i> Scan Another Archive
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="footer">
+                <p>Threat-IQ &copy; 2023 | Advanced Threat Analysis Platform</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const API_BASE_URL = 'http://localhost:5000/api';
+
+    // DOM Elements
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('document-upload');
+    const filePreview = document.getElementById('filePreview');
+    const fileIcon = document.getElementById('fileIcon');
+    const fileNamePreview = document.getElementById('fileNamePreview');
+    const fileSizePreview = document.getElementById('fileSizePreview');
+    const fileTypePreview = document.getElementById('fileTypePreview');
+    const fileRemove = document.getElementById('fileRemove');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const analyzeBtn = document.getElementById('analyze-document');
+    const scanningOverlay = document.getElementById('scanningOverlay');
+    const scanningText = document.getElementById('scanningText');
+    const threatScoreContainer = document.getElementById('document-threat-score');
+    const threatScoreValue = document.getElementById('threatScoreValue');
+    const riskLevel = document.getElementById('riskLevel');
+    const fileName = document.getElementById('fileName');
+    const fileType = document.getElementById('fileType');
+    const fileSize = document.getElementById('fileSize');
+    const fileHash = document.getElementById('fileHash');
+    const threatBreakdown = document.getElementById('threatBreakdown');
+    const analysisDetails = document.getElementById('analysisDetails');
+    const downloadReportBtn = document.getElementById('downloadReport');
+    const scanAnotherBtn = document.getElementById('scanAnother');
+
+    let currentFile = null;
+
+    // Event Listeners
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', handleDragOver);
+    uploadArea.addEventListener('drop', handleFileDrop);
+    fileInput.addEventListener('change', handleFileSelect);
+    fileRemove.addEventListener('click', removeFile);
+    analyzeBtn.addEventListener('click', analyzeDocument);
+    scanAnotherBtn.addEventListener('click', resetScanner);
+
+    // File Handling Functions
+    function handleDragOver(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--primary)';
+        uploadArea.style.backgroundColor = 'rgba(10, 132, 255, 0.1)';
+    }
+
+    function handleFileDrop(e) {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+        resetUploadAreaStyle();
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    }
+
+    function handleFile(file) {
+        // Validate file type and size
+        const allowedTypes = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExtension)) {
+            alert('Please select a valid document file (PDF, DOCX, XLSX, PPTX)');
+            return;
+        }
+        
+        if (file.size > 50 * 1024 * 1024) {
+            alert('File size must be less than 50MB');
+            return;
+        }
+        
+        currentFile = file;
+        
+        // Show file preview with animation
+        showFilePreview(file);
+        
+        // Simulate upload progress
+        simulateUploadProgress();
+    }
+
+    function showFilePreview(file) {
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const fileTypeName = getFileTypeName(fileExtension);
+        
+        // Set file icon based on type
+        setFileIcon(fileExtension);
+        
+        // Update preview content
+        fileNamePreview.textContent = file.name;
+        fileSizePreview.textContent = formatFileSize(file.size);
+        fileTypePreview.textContent = fileTypeName.toUpperCase();
+        
+        // Show preview with animation
+        filePreview.classList.add('visible');
+        
+        // Hide upload area
+        uploadArea.style.display = 'none';
+    }
+
+    function setFileIcon(fileExtension) {
+        // Clear existing classes
+        fileIcon.className = 'file-icon';
+        
+        // Set appropriate icon and color
+        const iconMap = {
+            'pdf': { class: 'pdf', icon: 'fa-file-pdf' },
+            'docx': { class: 'docx', icon: 'fa-file-word' },
+            'doc': { class: 'docx', icon: 'fa-file-word' },
+            'xlsx': { class: 'xlsx', icon: 'fa-file-excel' },
+            'xls': { class: 'xlsx', icon: 'fa-file-excel' },
+            'pptx': { class: 'pptx', icon: 'fa-file-powerpoint' },
+            'ppt': { class: 'pptx', icon: 'fa-file-powerpoint' }
+        };
+        
+        const fileInfo = iconMap[fileExtension] || { class: 'default', icon: 'fa-file' };
+        
+        fileIcon.classList.add(fileInfo.class);
+        fileIcon.innerHTML = `<i class="fas ${fileInfo.icon}"></i>`;
+    }
+
+    function getFileTypeName(extension) {
+        const typeMap = {
+            'pdf': 'PDF Document',
+            'docx': 'Word Document',
+            'doc': 'Word Document',
+            'xlsx': 'Excel Spreadsheet',
+            'xls': 'Excel Spreadsheet',
+            'pptx': 'PowerPoint Presentation',
+            'ppt': 'PowerPoint Presentation'
+        };
+        
+        return typeMap[extension] || 'Document';
+    }
+
+    function simulateUploadProgress() {
+        uploadProgress.classList.add('visible');
+        progressFill.style.width = '0%';
+        progressText.textContent = 'Uploading...';
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                progressText.textContent = 'Upload Complete!';
+                
+                // Hide progress bar after completion
+                setTimeout(() => {
+                    uploadProgress.classList.remove('visible');
+                }, 1000);
+            }
+            
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Uploading... ${Math.round(progress)}%`;
+        }, 200);
+    }
+
+    function removeFile() {
+        currentFile = null;
+        fileInput.value = '';
+        filePreview.classList.remove('visible');
+        uploadArea.style.display = 'block';
+        uploadProgress.classList.remove('visible');
+        resetUploadAreaStyle();
+    }
+
+    function resetUploadAreaStyle() {
+        uploadArea.style.borderColor = 'var(--bg-tertiary)';
+        uploadArea.style.backgroundColor = 'transparent';
+    }
+
+    // Analysis Functions
+    async function analyzeDocument() {
+        if (!currentFile) {
+            alert('Please select a file first');
+            return;
+        }
+
+        showScanningOverlay('Analyzing Document...');
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/analyze/document`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Analysis failed');
+            }
+
+            const results = await response.json();
+            displayResults(results);
+
+        } catch (error) {
+            console.error('Analysis error:', error);
+            alert('Analysis failed: ' + error.message);
+        } finally {
+            hideScanningOverlay();
+        }
+    }
+
+    function displayResults(results) {
+        console.log('Analysis results:', results);
+        
+        // Update basic file info
+        fileName.textContent = results.filename;
+        fileType.textContent = results.file_type;
+        fileSize.textContent = formatFileSize(results.file_size);
+        fileHash.textContent = results.file_hash;
+
+        // Update threat score
+        const threatScore = results.threat_score || 0;
+        threatScoreValue.textContent = `${threatScore}/100`;
+        
+        // Update risk level with proper styling
+        const riskLevelText = results.risk_level || 'low';
+        const riskDisplayText = riskLevelText.replace('-', ' ').toUpperCase();
+        riskLevel.textContent = `${riskDisplayText} RISK`;
+        riskLevel.className = `risk-level risk-${riskLevelText}`;
+
+        // Update threat breakdown
+        updateThreatBreakdown(results);
+
+        // Update analysis details
+        updateAnalysisDetails(results);
+
+        // Show results section
+        threatScoreContainer.classList.add('visible');
+        
+        // Scroll to results
+        threatScoreContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateThreatBreakdown(results) {
+        let html = '<h3 style="margin-bottom: 15px;">Threat Breakdown</h3>';
+        
+        let hasThreats = false;
+
+        // Hash-based threats
+        const vtResults = results.virustotal_results || {};
+        if (vtResults.positives > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>🚨 Malicious File Hash</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            Detected by ${vtResults.positives} antivirus engines
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-high">HIGH</span>
+                </div>
+            `;
+        }
+
+        // URL-based threats
+        const suspiciousUrls = results.suspicious_urls || [];
+        if (suspiciousUrls.length > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>⚠️ Suspicious URLs</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            ${suspiciousUrls.length} suspicious links found
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-medium">MEDIUM</span>
+                </div>
+            `;
+        }
+
+        // Content-based threats
+        const suspiciousContent = results.suspicious_content || [];
+        if (suspiciousContent.length > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>📝 Suspicious Content</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            ${suspiciousContent.length} suspicious patterns found
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-low">LOW</span>
+                </div>
+            `;
+        }
+
+        if (!hasThreats) {
+            html += `
+                <div style="text-align: center; color: var(--success); padding: 20px;">
+                    <i class="fas fa-shield-alt" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <div>No specific threats identified</div>
+                </div>
+            `;
+        }
+
+        threatBreakdown.innerHTML = html;
+    }
+
+    function updateAnalysisDetails(results) {
+        let html = '<h3 style="margin-bottom: 15px;">Analysis Details</h3>';
+        
+        // Add analysis details from backend
+        const details = results.analysis_details || [];
+        details.forEach(detail => {
+            html += `<div class="detail-item">${detail}</div>`;
+        });
+
+        // Add URL analysis if available
+        const suspiciousUrls = results.suspicious_urls || [];
+        if (suspiciousUrls.length > 0) {
+            html += '<div class="detail-item">';
+            html += '<strong>🔍 Suspicious URLs Found:</strong>';
+            html += '<div class="url-list">';
+            
+            suspiciousUrls.forEach(urlObj => {
+                const reasons = urlObj.reasons ? urlObj.reasons.join(', ') : 'Suspicious pattern';
+                html += `
+                    <div class="url-item url-suspicious">
+                        <div><strong>URL:</strong> ${urlObj.url}</div>
+                        <div style="font-size: 11px; color: var(--warning); margin-top: 4px;">
+                            <strong>Reasons:</strong> ${reasons}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+        }
+
+        // Add safe URLs if available
+        const safeUrls = results.safe_urls || [];
+        if (safeUrls.length > 0) {
+            html += '<div class="detail-item">';
+            html += '<strong>✅ Normal URLs Found:</strong>';
+            html += '<div class="url-list">';
+            
+            safeUrls.forEach(url => {
+                html += `<div class="url-item url-safe">${url}</div>`;
+            });
+            
+            html += '</div></div>';
+        }
+
+        analysisDetails.innerHTML = html;
+    }
+
+    // Utility Functions
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showScanningOverlay(text) {
+        scanningText.textContent = text;
+        scanningOverlay.classList.add('active');
+    }
+
+    function hideScanningOverlay() {
+        scanningOverlay.classList.remove('active');
+    }
+
+    function resetScanner() {
+        currentFile = null;
+        fileInput.value = '';
+        filePreview.classList.remove('visible');
+        uploadArea.style.display = 'block';
+        threatScoreContainer.classList.remove('visible');
+        resetUploadAreaStyle();
+    }
+
+    // Download Report Function
+    downloadReportBtn.addEventListener('click', function() {
+        if (!currentFile) {
+            alert('Please analyze a file first');
+            return;
+        }
+        
+        // Create a simple text report
+        const report = `
+THREAT-IQ ANALYSIS REPORT
+========================
+
+File: ${fileName.textContent}
+Type: ${fileType.textContent}
+Size: ${fileSize.textContent}
+Hash: ${fileHash.textContent}
+Threat Score: ${threatScoreValue.textContent}
+Risk Level: ${riskLevel.textContent}
+
+Generated: ${new Date().toLocaleString()}
+
+Threat Breakdown:
+${threatBreakdown.innerText}
+
+Analysis Details:
+${analysisDetails.innerText}
+        `;
+        
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `threat_report_${fileName.textContent}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Navigation functionality
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function() {
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+            
+            // Add active class to clicked nav item
+            this.classList.add('active');
+            
+            // Hide all content sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show the target content section
+            const targetId = this.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+    
+    // Theme toggle functionality
+    const themeToggle = document.querySelector('.theme-toggle');
+    const body = document.body;
+    
+    themeToggle.addEventListener('click', function() {
+        body.classList.toggle('light-theme');
+    });
+    
+    // Sidebar toggle functionality
+    const sidebarToggle = document.querySelector('.sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    
+    sidebarToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('collapsed');
+        
+        // Update toggle icon
+        const icon = this.querySelector('i');
+        if (sidebar.classList.contains('collapsed')) {
+            icon.className = 'fas fa-chevron-right';
+        } else {
+            icon.className = 'fas fa-chevron-left';
+        }
+    });
+    
+    // Upload area interaction
+    const uploadAreas = document.querySelectorAll('.upload-area');
+    
+    uploadAreas.forEach(area => {
+        area.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = 'var(--primary)';
+            this.style.backgroundColor = 'rgba(10, 132, 255, 0.1)';
+        });
+        
+        area.addEventListener('dragleave', function() {
+            this.style.borderColor = 'var(--bg-tertiary)';
+            this.style.backgroundColor = 'transparent';
+        });
+        
+        area.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = 'var(--primary)';
+            this.style.backgroundColor = 'rgba(10, 132, 255, 0.05)';
+        });
+    });
+</script>
+</body>
+</html>
