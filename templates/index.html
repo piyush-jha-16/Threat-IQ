@@ -79,6 +79,55 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Dashboard Styles */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 25px 0;
+        }
+
+        .dashboard-card {
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            text-align: center;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--bg-tertiary);
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .dashboard-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .dashboard-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .dashboard-description {
+            color: var(--text-tertiary);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
         /* File Upload Styling */
         .file-upload-preview {
             display: none;
@@ -116,6 +165,7 @@
         .file-icon.docx { background: linear-gradient(135deg, #4a86e8, #2b5fdc); color: white; }
         .file-icon.xlsx { background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; }
         .file-icon.pptx { background: linear-gradient(135deg, #ff9800, #f57c00); color: white; }
+        .file-icon.exe { background: linear-gradient(135deg, #9c27b0, #7b1fa2); color: white; }
         .file-icon.default { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
 
         .file-details {
@@ -183,6 +233,18 @@
             text-align: center;
             color: var(--text-tertiary);
             font-size: 12px;
+        }
+
+        /* Disabled Button */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:disabled:hover {
+            background-color: var(--primary);
+            transform: none !important;
         }
 
         /* File Info Styling */
@@ -795,16 +857,13 @@
             align-items: center;
             justify-content: center;
             margin: 20px 0;
+            position: relative;
         }
 
         .score-circle {
             width: 150px;
             height: 150px;
             border-radius: 50%;
-            background: conic-gradient(var(--success) 0% 25%, var(--warning) 25% 75%, var(--danger) 75% 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             position: relative;
             box-shadow: 0 0 0 10px var(--bg-secondary), 0 0 20px rgba(0, 0, 0, 0.3);
         }
@@ -818,6 +877,10 @@
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
         .score-value {
@@ -965,6 +1028,11 @@
             .file-meta {
                 justify-content: center;
             }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
         }
     </style>
 </head>
@@ -975,8 +1043,9 @@
         <div class="scanning-text" id="scanningText">Analyzing Document...</div>
     </div>
 
-    <!-- Hidden File Input -->
+    <!-- Hidden File Inputs -->
     <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt" style="display: none;">
+    <input type="file" id="exeFileInput" accept=".exe,.dll,.msi,.bat,.cmd,.ps1,.vbs,.scr,.com,.sys,.ocx" style="display: none;">
 
     <div class="app-container">
         <!-- Sidebar Navigation -->
@@ -991,11 +1060,23 @@
             </div>
             
             <ul class="nav-items">
-                <li class="nav-item active" data-target="document-analysis">
+                <li class="nav-item active" data-target="dashboard">
+                    <div class="nav-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <span class="nav-text">Dashboard</span>
+                </li>
+                <li class="nav-item" data-target="document-analysis">
                     <div class="nav-icon">
                         <i class="fas fa-file-pdf"></i>
                     </div>
                     <span class="nav-text">Document Analysis</span>
+                </li>
+                <li class="nav-item" data-target="executable-analysis">
+                    <div class="nav-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <span class="nav-text">Executable File Analyzer</span>
                 </li>
                 <li class="nav-item" data-target="url-analysis">
                     <div class="nav-icon">
@@ -1044,8 +1125,82 @@
             
             <!-- Content Area -->
             <div class="content-area">
+                <!-- Dashboard Section -->
+                <div class="content-section active" id="dashboard">
+                    <div class="section-header">
+                        <h1 class="section-title">Threat-IQ Dashboard</h1>
+                        <p class="section-subtitle">Welcome to Threat-IQ - Your comprehensive security analysis platform. Protect your digital assets with advanced threat detection.</p>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="dashboard-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <h3 class="dashboard-title">Document Analysis</h3>
+                            <p class="dashboard-description">
+                                Upload and analyze PDF, DOCX, XLSX, and PPTX files for hidden threats, malicious URLs, and suspicious content embedded within documents.
+                            </p>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="dashboard-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <h3 class="dashboard-title">Executable File Analyzer</h3>
+                            <p class="dashboard-description">
+                                Analyze executable files (EXE, DLL, MSI) for malware, suspicious behavior, and potential security threats using advanced heuristics.
+                            </p>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="dashboard-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <h3 class="dashboard-title">URL Safety Analyzer</h3>
+                            <p class="dashboard-description">
+                                Check any URL for phishing attempts, malware distribution, and other security threats using multiple threat intelligence sources.
+                            </p>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="dashboard-icon">
+                                <i class="fas fa-file-archive"></i>
+                            </div>
+                            <h3 class="dashboard-title">Archive Scanner</h3>
+                            <p class="dashboard-description">
+                                Analyze compressed files (ZIP, RAR, TAR) without extraction. Detect malicious executables and suspicious file structures.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h2 class="card-title">Getting Started</h2>
+                        </div>
+                        <p>Choose any of the analysis tools from the sidebar to begin scanning for threats. Each tool provides comprehensive security analysis with detailed threat reports.</p>
+                        <div style="margin-top: 20px;">
+                            <strong>Supported File Formats:</strong>
+                            <div style="display: flex; gap: 15px; margin-top: 10px; flex-wrap: wrap;">
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">PDF</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">DOCX</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">XLSX</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">PPTX</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">EXE</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">DLL</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">MSI</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">ZIP</span>
+                                <span style="background: var(--bg-tertiary); padding: 5px 12px; border-radius: 20px; font-size: 12px;">RAR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Document Analysis Section -->
-                <div class="content-section active" id="document-analysis">
+                <div class="content-section" id="document-analysis">
                     <div class="section-header">
                         <h1 class="section-title">Document Analysis</h1>
                         <p class="section-subtitle">Upload documents for deep security analysis. We'll extract and examine all embedded content, links, and metadata for potential threats.</p>
@@ -1096,7 +1251,7 @@
                         </div>
                         
                         <div style="text-align: center;">
-                            <button class="btn btn-primary" id="analyze-document">
+                            <button class="btn btn-primary" id="analyze-document" disabled>
                                 <i class="fas fa-search btn-icon"></i> Analyze Document
                             </button>
                         </div>
@@ -1134,11 +1289,10 @@
                             </div>
                             
                             <div class="threat-score">
-                                <div class="score-circle">
-                                    <div class="score-inner">
-                                        <div class="score-value" id="threatScoreValue">0/100</div>
-                                        <div class="score-label">THREAT SCORE</div>
-                                    </div>
+                                <canvas id="threatChart" width="150" height="150"></canvas>
+                                <div class="score-inner">
+                                    <div class="score-value" id="threatScoreValue">0/100</div>
+                                    <div class="score-label">THREAT SCORE</div>
                                 </div>
                             </div>
                             
@@ -1159,6 +1313,127 @@
                                     <i class="fas fa-file-download btn-icon"></i> Download Full Report
                                 </button>
                                 <button class="btn btn-secondary" id="scanAnother">
+                                    <i class="fas fa-redo btn-icon"></i> Scan Another File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Executable File Analyzer Section -->
+                <div class="content-section" id="executable-analysis">
+                    <div class="section-header">
+                        <h1 class="section-title">Executable File Analyzer</h1>
+                        <p class="section-subtitle">Upload executable files for deep security analysis. We'll examine file structure, behavior patterns, and potential threats using advanced heuristics.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <h2 class="card-title">Upload Executable Files</h2>
+                        </div>
+                        
+                        <p>Select an executable file to analyze for malware, suspicious behavior, and potential security threats.</p>
+                        
+                        <div class="upload-area" id="executable-upload">
+                            <div class="upload-icon">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <div class="upload-text">Drag & Drop executable files here</div>
+                            <div class="upload-subtext">Supports EXE, DLL, MSI, BAT, CMD, PS1, VBS (Max 100MB)</div>
+                        </div>
+
+                        <!-- File Upload Preview -->
+                        <div class="file-upload-preview" id="exeFilePreview">
+                            <div class="file-icon" id="exeFileIcon">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div class="file-details">
+                                <div class="file-name" id="exeFileNamePreview">file_name.exe</div>
+                                <div class="file-meta">
+                                    <span id="exeFileSizePreview">0 KB</span>
+                                    <span id="exeFileTypePreview">EXE</span>
+                                    <span style="color: var(--success);">Ready for analysis</span>
+                                </div>
+                            </div>
+                            <button class="file-remove" id="exeFileRemove" title="Remove file">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <!-- Upload Progress -->
+                        <div class="upload-progress" id="exeUploadProgress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="exeProgressFill"></div>
+                            </div>
+                            <div class="progress-text" id="exeProgressText">Uploading...</div>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button class="btn btn-primary" id="analyze-executable" disabled>
+                                <i class="fas fa-search btn-icon"></i> Analyze Executable
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Threat Score Section -->
+                    <div class="threat-score-container" id="executable-threat-score">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h2 class="card-title">Executable Threat Analysis Report</h2>
+                            </div>
+                            
+                            <!-- File Information -->
+                            <div class="file-info">
+                                <h3>File Information</h3>
+                                <div class="file-info-item">
+                                    <span>File Name:</span>
+                                    <span id="exeFileName">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>File Type:</span>
+                                    <span id="exeFileType">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>File Size:</span>
+                                    <span id="exeFileSize">-</span>
+                                </div>
+                                <div class="file-info-item">
+                                    <span>SHA-256 Hash:</span>
+                                    <span id="exeFileHash">-</span>
+                                </div>
+                            </div>
+                            
+                            <div class="threat-score">
+                                <canvas id="exeThreatChart" width="150" height="150"></canvas>
+                                <div class="score-inner">
+                                    <div class="score-value" id="exeThreatScoreValue">0/100</div>
+                                    <div class="score-label">THREAT SCORE</div>
+                                </div>
+                            </div>
+                            
+                            <div class="risk-level risk-low" id="exeRiskLevel">LOW RISK</div>
+                            
+                            <!-- Threat Breakdown -->
+                            <div class="threat-breakdown" id="exeThreatBreakdown">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            
+                            <!-- Analysis Details -->
+                            <div class="analysis-details" id="exeAnalysisDetails">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            
+                            <div class="report-actions">
+                                <button class="btn btn-primary" id="exeDownloadReport">
+                                    <i class="fas fa-file-download btn-icon"></i> Download Full Report
+                                </button>
+                                <button class="btn btn-secondary" id="exeScanAnother">
                                     <i class="fas fa-redo btn-icon"></i> Scan Another File
                                 </button>
                             </div>
@@ -1333,7 +1608,7 @@
 <script>
     const API_BASE_URL = 'http://localhost:5000/api';
 
-    // DOM Elements
+    // DOM Elements for Document Analysis
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('document-upload');
     const filePreview = document.getElementById('filePreview');
@@ -1360,9 +1635,37 @@
     const downloadReportBtn = document.getElementById('downloadReport');
     const scanAnotherBtn = document.getElementById('scanAnother');
 
-    let currentFile = null;
+    // DOM Elements for Executable Analysis
+    const exeFileInput = document.getElementById('exeFileInput');
+    const exeUploadArea = document.getElementById('executable-upload');
+    const exeFilePreview = document.getElementById('exeFilePreview');
+    const exeFileIcon = document.getElementById('exeFileIcon');
+    const exeFileNamePreview = document.getElementById('exeFileNamePreview');
+    const exeFileSizePreview = document.getElementById('exeFileSizePreview');
+    const exeFileTypePreview = document.getElementById('exeFileTypePreview');
+    const exeFileRemove = document.getElementById('exeFileRemove');
+    const exeUploadProgress = document.getElementById('exeUploadProgress');
+    const exeProgressFill = document.getElementById('exeProgressFill');
+    const exeProgressText = document.getElementById('exeProgressText');
+    const analyzeExeBtn = document.getElementById('analyze-executable');
+    const exeThreatScoreContainer = document.getElementById('executable-threat-score');
+    const exeThreatScoreValue = document.getElementById('exeThreatScoreValue');
+    const exeRiskLevel = document.getElementById('exeRiskLevel');
+    const exeFileName = document.getElementById('exeFileName');
+    const exeFileType = document.getElementById('exeFileType');
+    const exeFileSize = document.getElementById('exeFileSize');
+    const exeFileHash = document.getElementById('exeFileHash');
+    const exeThreatBreakdown = document.getElementById('exeThreatBreakdown');
+    const exeAnalysisDetails = document.getElementById('exeAnalysisDetails');
+    const exeDownloadReportBtn = document.getElementById('exeDownloadReport');
+    const exeScanAnotherBtn = document.getElementById('exeScanAnother');
 
-    // Event Listeners
+    let currentFile = null;
+    let currentExeFile = null;
+    let threatChart = null;
+    let exeThreatChart = null;
+
+    // Event Listeners for Document Analysis
     uploadArea.addEventListener('click', () => fileInput.click());
     uploadArea.addEventListener('dragover', handleDragOver);
     uploadArea.addEventListener('drop', handleFileDrop);
@@ -1371,7 +1674,16 @@
     analyzeBtn.addEventListener('click', analyzeDocument);
     scanAnotherBtn.addEventListener('click', resetScanner);
 
-    // File Handling Functions
+    // Event Listeners for Executable Analysis
+    exeUploadArea.addEventListener('click', () => exeFileInput.click());
+    exeUploadArea.addEventListener('dragover', handleExeDragOver);
+    exeUploadArea.addEventListener('drop', handleExeFileDrop);
+    exeFileInput.addEventListener('change', handleExeFileSelect);
+    exeFileRemove.addEventListener('click', removeExeFile);
+    analyzeExeBtn.addEventListener('click', analyzeExecutable);
+    exeScanAnotherBtn.addEventListener('click', resetExeScanner);
+
+    // File Handling Functions for Document Analysis
     function handleDragOver(e) {
         e.preventDefault();
         uploadArea.style.borderColor = 'var(--primary)';
@@ -1413,6 +1725,9 @@
         
         // Show file preview with animation
         showFilePreview(file);
+        
+        // Enable analyze button
+        analyzeBtn.disabled = false;
         
         // Simulate upload progress
         simulateUploadProgress();
@@ -1502,12 +1817,164 @@
         filePreview.classList.remove('visible');
         uploadArea.style.display = 'block';
         uploadProgress.classList.remove('visible');
+        analyzeBtn.disabled = true;
         resetUploadAreaStyle();
     }
 
     function resetUploadAreaStyle() {
         uploadArea.style.borderColor = 'var(--bg-tertiary)';
         uploadArea.style.backgroundColor = 'transparent';
+    }
+
+    // File Handling Functions for Executable Analysis
+    function handleExeDragOver(e) {
+        e.preventDefault();
+        exeUploadArea.style.borderColor = 'var(--primary)';
+        exeUploadArea.style.backgroundColor = 'rgba(10, 132, 255, 0.1)';
+    }
+
+    function handleExeFileDrop(e) {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleExeFile(files[0]);
+        }
+        resetExeUploadAreaStyle();
+    }
+
+    function handleExeFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            handleExeFile(files[0]);
+        }
+    }
+
+    function handleExeFile(file) {
+        // Validate file type and size
+        const allowedTypes = ['.exe', '.dll', '.msi', '.bat', '.cmd', '.ps1', '.vbs', '.scr', '.com', '.sys', '.ocx'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExtension)) {
+            alert('Please select a valid executable file (EXE, DLL, MSI, BAT, CMD, PS1, VBS)');
+            return;
+        }
+        
+        if (file.size > 100 * 1024 * 1024) {
+            alert('File size must be less than 100MB');
+            return;
+        }
+        
+        currentExeFile = file;
+        
+        // Show file preview with animation
+        showExeFilePreview(file);
+        
+        // Enable analyze button
+        analyzeExeBtn.disabled = false;
+        
+        // Simulate upload progress
+        simulateExeUploadProgress();
+    }
+
+    function showExeFilePreview(file) {
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const fileTypeName = getExeFileTypeName(fileExtension);
+        
+        // Set file icon based on type
+        setExeFileIcon(fileExtension);
+        
+        // Update preview content
+        exeFileNamePreview.textContent = file.name;
+        exeFileSizePreview.textContent = formatFileSize(file.size);
+        exeFileTypePreview.textContent = fileTypeName.toUpperCase();
+        
+        // Show preview with animation
+        exeFilePreview.classList.add('visible');
+        
+        // Hide upload area
+        exeUploadArea.style.display = 'none';
+    }
+
+    function setExeFileIcon(fileExtension) {
+        // Clear existing classes
+        exeFileIcon.className = 'file-icon';
+        
+        // Set appropriate icon and color
+        const iconMap = {
+            'exe': { class: 'exe', icon: 'fa-cogs' },
+            'dll': { class: 'exe', icon: 'fa-cogs' },
+            'msi': { class: 'exe', icon: 'fa-cogs' },
+            'bat': { class: 'exe', icon: 'fa-terminal' },
+            'cmd': { class: 'exe', icon: 'fa-terminal' },
+            'ps1': { class: 'exe', icon: 'fa-terminal' },
+            'vbs': { class: 'exe', icon: 'fa-file-code' },
+            'scr': { class: 'exe', icon: 'fa-desktop' },
+            'com': { class: 'exe', icon: 'fa-cogs' },
+            'sys': { class: 'exe', icon: 'fa-cogs' },
+            'ocx': { class: 'exe', icon: 'fa-cogs' }
+        };
+        
+        const fileInfo = iconMap[fileExtension] || { class: 'exe', icon: 'fa-cogs' };
+        
+        exeFileIcon.classList.add(fileInfo.class);
+        exeFileIcon.innerHTML = `<i class="fas ${fileInfo.icon}"></i>`;
+    }
+
+    function getExeFileTypeName(extension) {
+        const typeMap = {
+            'exe': 'Executable File',
+            'dll': 'Dynamic Link Library',
+            'msi': 'Windows Installer',
+            'bat': 'Batch File',
+            'cmd': 'Command Script',
+            'ps1': 'PowerShell Script',
+            'vbs': 'VBScript File',
+            'scr': 'Screen Saver',
+            'com': 'Command File',
+            'sys': 'System File',
+            'ocx': 'ActiveX Control'
+        };
+        
+        return typeMap[extension] || 'Executable';
+    }
+
+    function simulateExeUploadProgress() {
+        exeUploadProgress.classList.add('visible');
+        exeProgressFill.style.width = '0%';
+        exeProgressText.textContent = 'Uploading...';
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                exeProgressText.textContent = 'Upload Complete!';
+                
+                // Hide progress bar after completion
+                setTimeout(() => {
+                    exeUploadProgress.classList.remove('visible');
+                }, 1000);
+            }
+            
+            exeProgressFill.style.width = progress + '%';
+            exeProgressText.textContent = `Uploading... ${Math.round(progress)}%`;
+        }, 200);
+    }
+
+    function removeExeFile() {
+        currentExeFile = null;
+        exeFileInput.value = '';
+        exeFilePreview.classList.remove('visible');
+        exeUploadArea.style.display = 'block';
+        exeUploadProgress.classList.remove('visible');
+        analyzeExeBtn.disabled = true;
+        resetExeUploadAreaStyle();
+    }
+
+    function resetExeUploadAreaStyle() {
+        exeUploadArea.style.borderColor = 'var(--bg-tertiary)';
+        exeUploadArea.style.backgroundColor = 'transparent';
     }
 
     // Analysis Functions
@@ -1544,6 +2011,39 @@
         }
     }
 
+    async function analyzeExecutable() {
+        if (!currentExeFile) {
+            alert('Please select a file first');
+            return;
+        }
+
+        showScanningOverlay('Analyzing Executable...');
+
+        const formData = new FormData();
+        formData.append('file', currentExeFile);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/analyze/executable`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Analysis failed');
+            }
+
+            const results = await response.json();
+            displayExeResults(results);
+
+        } catch (error) {
+            console.error('Analysis error:', error);
+            alert('Analysis failed: ' + error.message);
+        } finally {
+            hideScanningOverlay();
+        }
+    }
+
     function displayResults(results) {
         console.log('Analysis results:', results);
         
@@ -1563,6 +2063,9 @@
         riskLevel.textContent = `${riskDisplayText} RISK`;
         riskLevel.className = `risk-level risk-${riskLevelText}`;
 
+        // Create threat chart with dynamic colors
+        createThreatChart(threatScore, riskLevelText);
+
         // Update threat breakdown
         updateThreatBreakdown(results);
 
@@ -1574,6 +2077,173 @@
         
         // Scroll to results
         threatScoreContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayExeResults(results) {
+        console.log('Executable analysis results:', results);
+        
+        // Update basic file info
+        exeFileName.textContent = results.filename;
+        exeFileType.textContent = results.file_type;
+        exeFileSize.textContent = formatFileSize(results.file_size);
+        exeFileHash.textContent = results.file_hash;
+
+        // Update threat score
+        const threatScore = results.threat_score || 0;
+        exeThreatScoreValue.textContent = `${threatScore}/100`;
+        
+        // Update risk level with proper styling
+        const riskLevelText = results.risk_level || 'low';
+        const riskDisplayText = riskLevelText.replace('-', ' ').toUpperCase();
+        exeRiskLevel.textContent = `${riskDisplayText} RISK`;
+        exeRiskLevel.className = `risk-level risk-${riskLevelText}`;
+
+        // Create threat chart with dynamic colors
+        createExeThreatChart(threatScore, riskLevelText);
+
+        // Update threat breakdown
+        updateExeThreatBreakdown(results);
+
+        // Update analysis details
+        updateExeAnalysisDetails(results);
+
+        // Show results section
+        exeThreatScoreContainer.classList.add('visible');
+        
+        // Scroll to results
+        exeThreatScoreContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function createThreatChart(score, riskLevel) {
+        const ctx = document.getElementById('threatChart').getContext('2d');
+        
+        // Destroy existing chart if it exists
+        if (threatChart) {
+            threatChart.destroy();
+        }
+
+        // Set colors based on risk level
+        let backgroundColor, borderColor;
+        switch(riskLevel) {
+            case 'very-high':
+                backgroundColor = ['#ff453a', '#3a3a3c'];
+                borderColor = '#ff453a';
+                break;
+            case 'high':
+                backgroundColor = ['#ff6b6b', '#3a3a3c'];
+                borderColor = '#ff6b6b';
+                break;
+            case 'medium':
+                backgroundColor = ['#ff9f0a', '#3a3a3c'];
+                borderColor = '#ff9f0a';
+                break;
+            case 'low':
+                backgroundColor = ['#30d158', '#3a3a3c'];
+                borderColor = '#30d158';
+                break;
+            case 'very-low':
+                backgroundColor = ['#4cd964', '#3a3a3c'];
+                borderColor = '#4cd964';
+                break;
+            default:
+                backgroundColor = ['#30d158', '#3a3a3c'];
+                borderColor = '#30d158';
+        }
+
+        threatChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    }
+
+    function createExeThreatChart(score, riskLevel) {
+        const ctx = document.getElementById('exeThreatChart').getContext('2d');
+        
+        // Destroy existing chart if it exists
+        if (exeThreatChart) {
+            exeThreatChart.destroy();
+        }
+
+        // Set colors based on risk level
+        let backgroundColor, borderColor;
+        switch(riskLevel) {
+            case 'very-high':
+                backgroundColor = ['#ff453a', '#3a3a3c'];
+                borderColor = '#ff453a';
+                break;
+            case 'high':
+                backgroundColor = ['#ff6b6b', '#3a3a3c'];
+                borderColor = '#ff6b6b';
+                break;
+            case 'medium':
+                backgroundColor = ['#ff9f0a', '#3a3a3c'];
+                borderColor = '#ff9f0a';
+                break;
+            case 'low':
+                backgroundColor = ['#30d158', '#3a3a3c'];
+                borderColor = '#30d158';
+                break;
+            case 'very-low':
+                backgroundColor = ['#4cd964', '#3a3a3c'];
+                borderColor = '#4cd964';
+                break;
+            default:
+                backgroundColor = ['#30d158', '#3a3a3c'];
+                borderColor = '#30d158';
+        }
+
+        exeThreatChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
     }
 
     function updateThreatBreakdown(results) {
@@ -1644,6 +2314,90 @@
         threatBreakdown.innerHTML = html;
     }
 
+    function updateExeThreatBreakdown(results) {
+        let html = '<h3 style="margin-bottom: 15px;">Threat Breakdown</h3>';
+        
+        let hasThreats = false;
+
+        // Hash-based threats
+        const vtResults = results.virustotal_results || {};
+        if (vtResults.positives > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>🚨 Malicious File Hash</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            Detected by ${vtResults.positives} antivirus engines
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-high">HIGH</span>
+                </div>
+            `;
+        }
+
+        // Behavioral threats
+        const suspiciousBehaviors = results.suspicious_behaviors || [];
+        if (suspiciousBehaviors.length > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>⚠️ Suspicious Behaviors</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            ${suspiciousBehaviors.length} suspicious behaviors detected
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-medium">MEDIUM</span>
+                </div>
+            `;
+        }
+
+        // Packed/obfuscated code
+        if (results.is_packed || results.is_obfuscated) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>🔒 Packed/Obfuscated Code</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            Code appears to be packed or obfuscated
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-medium">MEDIUM</span>
+                </div>
+            `;
+        }
+
+        // Network activity
+        const networkConnections = results.network_connections || [];
+        if (networkConnections.length > 0) {
+            hasThreats = true;
+            html += `
+                <div class="threat-item">
+                    <div>
+                        <strong>🌐 Network Connections</strong>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">
+                            ${networkConnections.length} network connections detected
+                        </div>
+                    </div>
+                    <span class="threat-severity severity-low">LOW</span>
+                </div>
+            `;
+        }
+
+        if (!hasThreats) {
+            html += `
+                <div style="text-align: center; color: var(--success); padding: 20px;">
+                    <i class="fas fa-shield-alt" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <div>No specific threats identified</div>
+                </div>
+            `;
+        }
+
+        exeThreatBreakdown.innerHTML = html;
+    }
+
     function updateAnalysisDetails(results) {
         let html = '<h3 style="margin-bottom: 15px;">Analysis Details</h3>';
         
@@ -1692,6 +2446,59 @@
         analysisDetails.innerHTML = html;
     }
 
+    function updateExeAnalysisDetails(results) {
+        let html = '<h3 style="margin-bottom: 15px;">Analysis Details</h3>';
+        
+        // Add analysis details from backend
+        const details = results.analysis_details || [];
+        details.forEach(detail => {
+            html += `<div class="detail-item">${detail}</div>`;
+        });
+
+        // Add behavioral analysis if available
+        const suspiciousBehaviors = results.suspicious_behaviors || [];
+        if (suspiciousBehaviors.length > 0) {
+            html += '<div class="detail-item">';
+            html += '<strong>⚠️ Suspicious Behaviors:</strong>';
+            html += '<div class="url-list">';
+            
+            suspiciousBehaviors.forEach(behavior => {
+                html += `<div class="url-item url-suspicious">${behavior}</div>`;
+            });
+            
+            html += '</div></div>';
+        }
+
+        // Add network connections if available
+        const networkConnections = results.network_connections || [];
+        if (networkConnections.length > 0) {
+            html += '<div class="detail-item">';
+            html += '<strong>🌐 Network Connections:</strong>';
+            html += '<div class="url-list">';
+            
+            networkConnections.forEach(connection => {
+                html += `<div class="url-item url-safe">${connection}</div>`;
+            });
+            
+            html += '</div></div>';
+        }
+
+        // Add file properties
+        if (results.file_properties) {
+            html += '<div class="detail-item">';
+            html += '<strong>📋 File Properties:</strong>';
+            html += '<div class="url-list">';
+            
+            Object.entries(results.file_properties).forEach(([key, value]) => {
+                html += `<div class="url-item url-safe"><strong>${key}:</strong> ${value}</div>`;
+            });
+            
+            html += '</div></div>';
+        }
+
+        exeAnalysisDetails.innerHTML = html;
+    }
+
     // Utility Functions
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
@@ -1716,10 +2523,33 @@
         filePreview.classList.remove('visible');
         uploadArea.style.display = 'block';
         threatScoreContainer.classList.remove('visible');
+        analyzeBtn.disabled = true;
         resetUploadAreaStyle();
+        
+        // Destroy chart
+        if (threatChart) {
+            threatChart.destroy();
+            threatChart = null;
+        }
     }
 
-    // Download Report Function
+    function resetExeScanner() {
+        currentExeFile = null;
+        exeFileInput.value = '';
+        exeFilePreview.classList.remove('visible');
+        exeUploadArea.style.display = 'block';
+        exeThreatScoreContainer.classList.remove('visible');
+        analyzeExeBtn.disabled = true;
+        resetExeUploadAreaStyle();
+        
+        // Destroy chart
+        if (exeThreatChart) {
+            exeThreatChart.destroy();
+            exeThreatChart = null;
+        }
+    }
+
+    // Download Report Functions
     downloadReportBtn.addEventListener('click', function() {
         if (!currentFile) {
             alert('Please analyze a file first');
@@ -1752,6 +2582,44 @@ ${analysisDetails.innerText}
         const a = document.createElement('a');
         a.href = url;
         a.download = `threat_report_${fileName.textContent}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    exeDownloadReportBtn.addEventListener('click', function() {
+        if (!currentExeFile) {
+            alert('Please analyze a file first');
+            return;
+        }
+        
+        // Create a simple text report
+        const report = `
+THREAT-IQ EXECUTABLE ANALYSIS REPORT
+====================================
+
+File: ${exeFileName.textContent}
+Type: ${exeFileType.textContent}
+Size: ${exeFileSize.textContent}
+Hash: ${exeFileHash.textContent}
+Threat Score: ${exeThreatScoreValue.textContent}
+Risk Level: ${exeRiskLevel.textContent}
+
+Generated: ${new Date().toLocaleString()}
+
+Threat Breakdown:
+${exeThreatBreakdown.innerText}
+
+Analysis Details:
+${exeAnalysisDetails.innerText}
+        `;
+        
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `threat_report_${exeFileName.textContent}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1825,6 +2693,10 @@ ${analysisDetails.innerText}
             this.style.backgroundColor = 'rgba(10, 132, 255, 0.05)';
         });
     });
+
+    // Initialize with analyze buttons disabled
+    analyzeBtn.disabled = true;
+    analyzeExeBtn.disabled = true;
 </script>
 </body>
 </html>
