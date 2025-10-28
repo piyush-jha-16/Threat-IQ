@@ -73,8 +73,71 @@ def extract_pdf_links_and_text(file_path):
     links = list(set(links))
     return links, text_content
 
+def is_internal_office_url(url):
+    """Check if URL is an internal Office XML reference or namespace"""
+    internal_patterns = [
+        r'^http://schemas\.microsoft\.com/',
+        r'^http://schemas\.openxmlformats\.org/',
+        r'^http://purl\.org/',
+        r'^http://www\.w3\.org/',
+        r'^mailto:',
+        r'^ftp:',
+        r'^file:',
+        r'^javascript:',
+        r'^vbscript:',
+        r'^\#',  # Internal anchors
+        r'^\./',  # Relative paths
+        r'^http://localhost',
+        r'^http://127\.0\.0\.1',
+    ]
+    
+    url_lower = url.lower()
+    
+    # Check for XML namespaces and internal references
+    if any(re.match(pattern, url_lower) for pattern in internal_patterns):
+        return True
+    
+    # Check for UUID-like patterns common in Office XML
+    if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', url_lower):
+        return True
+    
+    # Check for internal relationship IDs
+    if re.match(r'^rId\d+', url_lower):
+        return True
+    
+    return False
+
+def clean_and_filter_urls(urls):
+    """Clean URLs and filter out internal/technical ones"""
+    cleaned_urls = []
+    
+    for url in urls:
+        # Remove common XML artifacts and clean the URL
+        clean_url = url.strip()
+        
+        # Remove common prefixes/suffixes from Office XML
+        clean_url = re.sub(r'^[xX][mM][lL]:', '', clean_url)
+        clean_url = re.sub(r'&amp;', '&', clean_url)
+        clean_url = re.sub(r'&#x[0-9A-Fa-f]+;', '', clean_url)
+        
+        # Skip if empty after cleaning
+        if not clean_url or clean_url.isspace():
+            continue
+            
+        # Skip internal Office URLs
+        if is_internal_office_url(clean_url):
+            continue
+            
+        # Validate it's a real URL format
+        if re.match(r'^(https?://|www\.)[a-zA-Z0-9]', clean_url):
+            # Ensure it has a proper domain structure
+            if re.search(r'[a-zA-Z0-9-]+\.[a-zA-Z]{2,}', clean_url):
+                cleaned_urls.append(clean_url)
+    
+    return list(set(cleaned_urls))  # Remove duplicates
+
 def extract_office_links_and_text(file_path, file_extension):
-    """Extract links and text from Office documents (DOCX, XLSX, PPTX)"""
+    """Extract links and text from Office documents with improved filtering"""
     links = []
     text_content = ""
     
@@ -83,64 +146,104 @@ def extract_office_links_and_text(file_path, file_extension):
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             # Extract text content from different Office file types
             if file_extension in ['docx', 'doc']:
-                # Try to extract from Word document
-                try:
-                    if 'word/document.xml' in zip_ref.namelist():
-                        with zip_ref.open('word/document.xml') as f:
-                            content = f.read().decode('utf-8', errors='ignore')
-                            text_content += content
-                            
-                            # Extract URLs from Word content
-                            url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-                            urls = re.findall(url_pattern, content)
-                            links.extend(urls)
-                except:
-                    pass
+                # Extract from Word document
+                extracted_links = set()
+                
+                # Look in document.xml for content and links
+                if 'word/document.xml' in zip_ref.namelist():
+                    with zip_ref.open('word/document.xml') as f:
+                        content = f.read().decode('utf-8', errors='ignore')
+                        text_content += re.sub(r'<[^>]+>', ' ', content)  # Basic tag removal
+                        
+                        # Extract hyperlinks from relationships
+                        if 'word/_rels/document.xml.rels' in zip_ref.namelist():
+                            with zip_ref.open('word/_rels/document.xml.rels') as rels_file:
+                                rels_content = rels_file.read().decode('utf-8', errors='ignore')
+                                # Extract Target attributes which contain URLs
+                                url_matches = re.findall(r'Target="([^"]*)"', rels_content)
+                                extracted_links.update(url_matches)
+                
+                # Also check for hyperlinks in the main document
+                url_pattern = r'https?://[^\s<"]+|www\.[^\s<"]+'
+                urls_from_text = re.findall(url_pattern, text_content)
+                extracted_links.update(urls_from_text)
+                
+                links = list(extracted_links)
                     
             elif file_extension in ['xlsx', 'xls']:
-                # Try to extract from Excel spreadsheet
-                try:
-                    # Check shared strings and sheet files
-                    for name in zip_ref.namelist():
-                        if name.startswith('xl/sharedStrings.xml') or name.startswith('xl/worksheets/sheet'):
+                # Extract from Excel spreadsheet
+                extracted_links = set()
+                
+                # Check shared strings and sheet files
+                for name in zip_ref.namelist():
+                    if name.startswith('xl/sharedStrings.xml') or name.startswith('xl/worksheets/sheet'):
+                        try:
                             with zip_ref.open(name) as f:
                                 content = f.read().decode('utf-8', errors='ignore')
-                                text_content += content
+                                clean_text = re.sub(r'<[^>]+>', ' ', content)
+                                text_content += clean_text
                                 
-                                # Extract URLs from Excel content
-                                url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-                                urls = re.findall(url_pattern, content)
-                                links.extend(urls)
-                except:
-                    pass
+                                # Extract URLs from content
+                                url_pattern = r'https?://[^\s<"]+|www\.[^\s<"]+'
+                                urls = re.findall(url_pattern, clean_text)
+                                extracted_links.update(urls)
+                        except:
+                            continue
+                
+                # Check Excel relationships for hyperlinks
+                for name in zip_ref.namelist():
+                    if name.startswith('xl/worksheets/_rels/sheet') and name.endswith('.rels'):
+                        try:
+                            with zip_ref.open(name) as rels_file:
+                                rels_content = rels_file.read().decode('utf-8', errors='ignore')
+                                url_matches = re.findall(r'Target="([^"]*)"', rels_content)
+                                extracted_links.update(url_matches)
+                        except:
+                            continue
+                
+                links = list(extracted_links)
                     
             elif file_extension in ['pptx', 'ppt']:
-                # Try to extract from PowerPoint presentation
-                try:
-                    for name in zip_ref.namelist():
-                        if name.startswith('ppt/slides/slide') and name.endswith('.xml'):
+                # Extract from PowerPoint presentation
+                extracted_links = set()
+                
+                for name in zip_ref.namelist():
+                    if name.startswith('ppt/slides/slide') and name.endswith('.xml'):
+                        try:
                             with zip_ref.open(name) as f:
                                 content = f.read().decode('utf-8', errors='ignore')
-                                text_content += content
+                                clean_text = re.sub(r'<[^>]+>', ' ', content)
+                                text_content += clean_text
                                 
-                                # Extract URLs from PowerPoint content
-                                url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-                                urls = re.findall(url_pattern, content)
-                                links.extend(urls)
-                except:
-                    pass
+                                # Extract URLs from content
+                                url_pattern = r'https?://[^\s<"]+|www\.[^\s<"]+'
+                                urls = re.findall(url_pattern, clean_text)
+                                extracted_links.update(urls)
+                        except:
+                            continue
+                
+                # Check PowerPoint relationships
+                for name in zip_ref.namelist():
+                    if name.startswith('ppt/slides/_rels/slide') and name.endswith('.rels'):
+                        try:
+                            with zip_ref.open(name) as rels_file:
+                                rels_content = rels_file.read().decode('utf-8', errors='ignore')
+                                url_matches = re.findall(r'Target="([^"]*)"', rels_content)
+                                extracted_links.update(url_matches)
+                        except:
+                            continue
+                
+                links = list(extracted_links)
                     
     except zipfile.BadZipFile:
         # Handle older .doc, .xls, .ppt files (OLE format)
         try:
             if olefile.isOleFile(file_path):
                 ole = olefile.OleFileIO(file_path)
-                # Extract basic information from OLE files
                 text_content = "OLE Document - Limited analysis available"
                 
                 # Check for macros in older Office files (potential threat indicator)
                 if file_extension in ['doc', 'xls', 'ppt']:
-                    # Look for macro storage
                     if ole.exists('Macros'):
                         text_content += "\n[WARNING] Macros detected in document"
         except:
@@ -148,9 +251,10 @@ def extract_office_links_and_text(file_path, file_extension):
     except Exception as e:
         print(f"Error reading Office document: {e}")
     
-    # Remove duplicates
-    links = list(set(links))
-    return links, text_content
+    # Clean and filter the extracted links
+    cleaned_links = clean_and_filter_urls(links)
+    
+    return cleaned_links, text_content
 
 def extract_ole_metadata(file_path):
     """Extract metadata from older Office formats (DOC, XLS, PPT)"""
@@ -213,11 +317,22 @@ def analyze_urls(urls):
         'claim-', 'limited-time', 'special-offer', 'exclusive-deal'
     ]
     
+    # Microsoft and other trusted domains (reduce false positives)
+    trusted_domains = [
+        'microsoft.com', 'office.com', 'windows.com', 'adobe.com', 'google.com',
+        'apple.com', 'mozilla.org', 'w3.org', 'openxmlformats.org', 'purl.org'
+    ]
+    
     for url in urls:
         url_lower = url.lower()
         threat_level = 'safe'
         reasons = []
         severity_score = 0
+        
+        # Skip trusted domains (reduce false positives)
+        if any(domain in url_lower for domain in trusted_domains):
+            safe_urls.append(url)
+            continue
         
         # Check for high risk patterns
         for pattern in high_risk_patterns:
@@ -278,6 +393,10 @@ def analyze_urls(urls):
 def analyze_text_content(text):
     """Analyze text content for suspicious patterns with scoring"""
     suspicious_content = []
+    
+    # Only analyze if there's meaningful text content
+    if not text or len(text.strip()) < 10:
+        return suspicious_content
     
     # Suspicious keywords with severity levels
     high_severity_keywords = {
@@ -397,8 +516,7 @@ def calculate_threat_score(analysis_results):
         total_url_severity = sum(url.get('severity_score', 1) for url in suspicious_urls)
         
         malicious_urls = [url for url in suspicious_urls if url.get('threat_level') == 'malicious']
-        suspicious_url_count = len(suspicious_urls)
-        malicious_url_count = len(malicious_urls)
+        suspicious_url_count = len(suspicious_urls) - len(malicious_urls)
         
         if suspicious_url_count > 0:
             url_base_score = min(suspicious_url_count * 3, weights['suspicious_urls'] * 0.4)
@@ -679,93 +797,6 @@ def health_check():
         'message': 'Threat-IQ API is running',
         'timestamp': datetime.now().isoformat()
     })
-
-@app.route('/api/debug/test-scoring', methods=['GET'])
-def debug_test_scoring():
-    """Debug endpoint to test scoring algorithm"""
-    test_cases = [
-        {
-            'name': 'Very High Risk PDF',
-            'file_type': 'PDF',
-            'file_extension': 'pdf',
-            'virustotal_results': {'positives': 45, 'total': 65},
-            'suspicious_urls': [
-                {'threat_level': 'malicious', 'severity_score': 3},
-                {'threat_level': 'malicious', 'severity_score': 3},
-                {'threat_level': 'malicious', 'severity_score': 3}
-            ],
-            'suspicious_content': [
-                {'severity': 'high', 'score': 5},
-                {'severity': 'high', 'score': 5},
-                {'severity': 'high', 'score': 5}
-            ],
-            'extracted_links': ['url1', 'url2', 'url3'] * 5,
-            'metadata': {}
-        },
-        {
-            'name': 'High Risk DOC with Macros',
-            'file_type': 'DOC',
-            'file_extension': 'doc',
-            'virustotal_results': {'positives': 0, 'total': 65},
-            'suspicious_urls': [
-                {'threat_level': 'malicious', 'severity_score': 3}
-            ],
-            'suspicious_content': [
-                {'severity': 'high', 'score': 5}
-            ],
-            'extracted_links': ['url1', 'url2'],
-            'metadata': {'Macros': 'Yes'}
-        },
-        {
-            'name': 'Medium Risk XLSX',
-            'file_type': 'XLSX',
-            'file_extension': 'xlsx',
-            'virustotal_results': {'positives': 0, 'total': 65},
-            'suspicious_urls': [
-                {'threat_level': 'suspicious', 'severity_score': 1},
-                {'threat_level': 'suspicious', 'severity_score': 1}
-            ],
-            'suspicious_content': [
-                {'severity': 'medium', 'score': 2}
-            ],
-            'extracted_links': ['url1', 'url2'],
-            'metadata': {}
-        },
-        {
-            'name': 'Low Risk PPT',
-            'file_type': 'PPT',
-            'file_extension': 'ppt',
-            'virustotal_results': {'positives': 0, 'total': 65},
-            'suspicious_urls': [],
-            'suspicious_content': [],
-            'extracted_links': ['url1'],
-            'metadata': {}
-        }
-    ]
-    
-    results = []
-    for test_case in test_cases:
-        score = calculate_threat_score(test_case)
-        results.append({
-            'name': test_case['name'],
-            'score': score,
-            'risk_level': get_risk_level(score)
-        })
-    
-    return jsonify({'test_results': results})
-
-def get_risk_level(score):
-    """Get risk level from score"""
-    if score >= 80:
-        return 'very-high'
-    elif score >= 60:
-        return 'high'
-    elif score >= 40:
-        return 'medium'
-    elif score >= 20:
-        return 'low'
-    else:
-        return 'very-low'
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')
